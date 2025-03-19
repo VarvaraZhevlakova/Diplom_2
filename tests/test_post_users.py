@@ -1,11 +1,11 @@
 import allure
 import requests
-from conftest import api_client
+from conftest import delete_user
 from helpers.gen_input import DataGenerator
+from urls import REGISTER_URL
 
 
 class TestPostUser:
-    base_url = api_client.format_url("api/auth/register")
 
     @allure.title('Создание уникального пользователя ')
     def test_register_user(self, delete_user):
@@ -20,7 +20,7 @@ class TestPostUser:
             "name": name
         }
 
-        register_response = requests.post(self.base_url, json=register_data)
+        register_response = requests.post(REGISTER_URL, json=register_data)
         assert register_response.status_code == 200, f"Ошибка регистрации: {register_response.status_code} - {register_response.text}"
         register_response_json = register_response.json()
         assert register_response_json["success"] is True, "Регистрация не удалась"
@@ -42,14 +42,14 @@ class TestPostUser:
             "name": name
         }
 
-        register_response = requests.post(self.base_url, json=register_data)
+        register_response = requests.post(REGISTER_URL, json=register_data)
 
         assert register_response.status_code == 200, f"Ошибка регистрации: {register_response.status_code} - {register_response.text}"
         register_response_json = register_response.json()
         assert register_response_json["success"] is True, "Регистрация первого пользователя не удалась"
 
         #попытка зарегаться под юзером, который уже зареган
-        register_response_already_exist = requests.post(self.base_url, json=register_data)
+        register_response_already_exist = requests.post(REGISTER_URL, json=register_data)
 
         assert register_response_already_exist.status_code == 403, f"Ожидался статус 403, получен {register_response_already_exist.status_code}. Тело ответа: {register_response_already_exist.text}"
         register_response_already_exist_json = register_response_already_exist.json()
@@ -70,7 +70,7 @@ class TestPostUser:
         ]
 
         for payload in invalid_payloads:
-            response = requests.post(self.base_url, json=payload)
+            response = requests.post(REGISTER_URL, json=payload)
 
             assert response.status_code == 403, f"Ошибка: ожидался код 403, но получен {response.status_code} - {response.text}"
             response_json = response.json()

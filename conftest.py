@@ -2,25 +2,20 @@ import random
 
 import pytest
 import requests
-from urls import base_url_burgers
+
+from api_client import ApiClient
 from helpers.gen_input import DataGenerator
+from urls import BASE_URL_BURGERS, INGREDIENTS_URL, REGISTER_URL, USER_URL
 
 
-class ApiClient:
-    def __init__(self, base_url):
-        self.base_url = base_url
-
-    def format_url(self, endpoint):
-        return f"{self.base_url}{endpoint}"
-
-
-api_client = ApiClient(base_url_burgers)
+@pytest.fixture
+def api_client():
+    return ApiClient(base_url=BASE_URL_BURGERS)
 
 
 @pytest.fixture
 def get_ingredients():
-    url = api_client.format_url("api/ingredients")
-    response = requests.get(url)
+    response = requests.get(INGREDIENTS_URL)
     return response.json().get('data', [])
 
 
@@ -32,7 +27,6 @@ def random_ingredient(get_ingredients):
 
 @pytest.fixture
 def register_user():
-    url = api_client.format_url("api//auth/register")
     data_generator = DataGenerator()
     name = data_generator.generate_first_name()
     email = f"{data_generator.generate_login()}@example.com"
@@ -43,91 +37,60 @@ def register_user():
         "password": password,
         "name": name
     }
-    response = requests.post(api_client.format_url("/api/auth/register"), json=payload)
+    response = requests.post(REGISTER_URL, json=payload)
     return response
 
 
 @pytest.fixture
-def register_user_for_login():
-    url = api_client.format_url("api/auth/register")
-    data_generator = DataGenerator()
-    name = data_generator.generate_first_name()
-    email = f"{data_generator.generate_login()}@example.com"
-    password = data_generator.generate_password()
+def register_user_full():
+    def _register_user(return_type="default"):
+        data_generator = DataGenerator()
+        name = data_generator.generate_first_name()
+        email = f"{data_generator.generate_login()}@example.com"
+        password = data_generator.generate_password()
 
-    payload = {
-        "email": email,
-        "password": password,
-        "name": name
-    }
-    response = requests.post(api_client.format_url("/api/auth/register"), json=payload)
+        payload = {
+            "email": email,
+            "password": password,
+            "name": name
+        }
+        response = requests.post(REGISTER_URL, json=payload)
 
-    return {
-        "response": response,
-        "email": email,
-        "password": password
-    }
+        response_data = response.json()
+        access_token = response_data.get("accessToken")
 
+        if return_type == "login":
+            return {
+                "response": response,
+                "email": email,
+                "password": password
+            }
+        elif return_type == "orders":
+            return access_token
+        elif return_type == "user_data":
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": access_token
+            }
+            response_user = requests.get(USER_URL, headers=headers)
+            user_data = response_user.json().get("user", {})
 
-@pytest.fixture
-def register_user_for_get_orders():
-    url = api_client.format_url("api/auth/register")
-    data_generator = DataGenerator()
+            return {
+                "access_token": access_token,
+                "user_data": user_data,
+                "password": password
+            }
 
-    name = data_generator.generate_first_name()
-    email = f"{data_generator.generate_login()}@example.com"
-    password = data_generator.generate_password()
+        return response
 
-    payload = {
-        "email": email,
-        "password": password,
-        "name": name
-    }
-    response = requests.post(url, json=payload)
-
-    response_json = response.json()
-    return response_json["accessToken"]
-
-
-@pytest.fixture
-def register_and_get_user_data():
-
-    url_register = api_client.format_url("/api/auth/register")
-    data_generator = DataGenerator()
-    name = data_generator.generate_first_name()
-    email = f"{data_generator.generate_login()}@example.com"
-    password = data_generator.generate_password()
-
-    payload = {
-        "email": email,
-        "password": password,
-        "name": name
-    }
-    response = requests.post(url_register, json=payload)
-    response_data = response.json()
-
-    access_token = response_data.get("accessToken")
-    url_user_data = api_client.format_url("/api/auth/user")
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": access_token
-    }
-
-    response_user = requests.get(url_user_data, headers=headers)
-    user_data = response_user.json()
-
-    return {
-        "access_token": access_token,
-        "user_data": user_data
-    }
+    return _register_user
 
 
 @pytest.fixture
 def delete_user():
-    url = api_client.format_url("/api/auth/user")
     headers = {
-        "Content-Type": "application/json"}
-
-    response = requests.delete(url, headers=headers)
+        "Content-Type": "application/json"
+    }
+    response = requests.delete(USER_URL, headers=headers)
     return response
 

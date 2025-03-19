@@ -1,24 +1,25 @@
 import allure
 import requests
-from conftest import api_client
-
 import pytest
+from conftest import register_user_full
+from urls import LOGIN_URL
 
 
 class TestLogin:
-    base_url = api_client.format_url("api/auth/login")
 
     @allure.title('Проверка, система вернёт успешный ответ при правильном логине и пароле')
-    def test_login_valid_credentials(self, register_user_for_login):
-        email = register_user_for_login['email']
-        password = register_user_for_login['password']
+    def test_login_valid_credentials(self, register_user_full):
+        user_data = register_user_full("user_data")
+
+        email = user_data["user_data"]["email"]
+        password = user_data["password"]
 
         payload = {
             "email": email,
             "password": password,
         }
 
-        response = requests.post(self.base_url, json=payload)
+        response = requests.post(LOGIN_URL, json=payload)
 
         assert response.status_code == 200, f"Ожидался статус 200, получен {response.status_code}. Тело ответа: {response.text}"
         response_data = response.json()
@@ -42,7 +43,7 @@ class TestLogin:
             "password": password,
         }
 
-        response = requests.post(self.base_url, json=payload)
+        response = requests.post(LOGIN_URL, json=payload)
         assert response.status_code == 401, f"Ожидался статус 401, получен {response.status_code}. Тело ответа: {response.text}"
         assert response.json()["message"] == expected_message, f"Ошибка: {response.json()}"
 
